@@ -1,11 +1,10 @@
-import sys
-from tabnanny import check
+#!/usr/bin/python3
+import os, sys
+
 import cv2
 
 import json
-import os
 
-from copy import deepcopy
 
 import numpy as np 
 
@@ -13,7 +12,6 @@ from PyQt5 import QtCore, QtGui, uic, QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-
 
 from scipy import ndimage
 
@@ -37,17 +35,16 @@ from components.opener.dialogOpener import dialogOpener
 from components.widgets.treeView import TreeView
 
 from components.model.concreteDamage import DnnModel
+from ui_design.__import__ import ui_path
 
-
-sys.path.append("./dnn/mmsegmentation")
-from mmseg.apis import init_segmentor
 
 import time
+
 # Select folder "autolabel"
 # MainWindow UI
-project_ui = '../../ui_design/mainWindow.ui'
+project_ui = 'mainWindow.ui'
 
-form = resource_path(project_ui)
+form = ui_path(project_ui)
 form_class_main = uic.loadUiType(form)[0]
 
 # Mainwindow class
@@ -60,20 +57,37 @@ class MainWindow(QMainWindow, form_class_main,
         super().__init__()
         self.setupUi(self)
 
+        # from ** import ** 
+
         # Default Model
-        config_file = './dnn/checkpoints/2022.01.06 cgnet general crack 2048/cgnet_2048x2048_60k_CrackAsCityscapes.py'
-        checkpoint_file = './dnn/checkpoints/2022.01.06 cgnet general crack 2048/iter_60000.pth'
-        self.model = init_segmentor(config_file, 
-                                    checkpoint_file, 
-                                    device='cuda:0')
+        # # FIXME fix hard coding ... 
+        # config_file = './dnn/checkpoints/2022.01.06 cgnet general crack 2048/cgnet_2048x2048_60k_CrackAsCityscapes.py'
+        # checkpoint_file = './dnn/checkpoints/2022.01.06 cgnet general crack 2048/iter_60000.pth'
+        # self.model = init_segmentor(config_file, 
+        #                             checkpoint_file, 
+        #                             device='cuda:0')
 
 
-        #### Attributes #### 
+        """Attributes
+            brushSize (int): size of brush 
+            eraseSize (int): size of eraser 
+            ver_scale (float): vertical scale to plot image 
+            hzn_scale (float): horizontal scale to plot image
+            x, y (int): cordinate of (????, FIXME) 
+            label_class (int): currently working class number, used to call working layer 
+            label_segmentation (int): what is this?? FIXME
+            alpha (float): blend ratio between colormap and original image 
+            use_brush (bool): True when using brush
+            use_erase (bool): True when using eraser 
+            set_roi (bool): if True, an user defines roi size for each auto-labeling
+            set_roi_256 (bool): if True, auto label use roi of 256x256
+            circle (bool): if True, brush or eraser shape is circle, else rectangle 
+        """
         
         self.brushSize = 2
         self.eraseSize = 2
-        self.ver_scale = 1
-        self.hzn_scale = 1
+        self.ver_scale = 1.
+        self.hzn_scale = 1.
         self.x = 0 
         self.y = 0 
         self.label_class = 0
@@ -86,9 +100,6 @@ class MainWindow(QMainWindow, form_class_main,
         self.circle = True
         
         
-        
-        
-        
         # treeview setting 
         self.openFolderPath = None
         self.imgPath = None
@@ -98,14 +109,12 @@ class MainWindow(QMainWindow, form_class_main,
         self.dialog = QFileDialog()   # Find the Folder or File Dialog
         self.treeView.clicked.connect(self.treeViewImage)
         self.treeView.clicked.connect(self.askSave)
-        # self.treeView.keyPressEvent.connect(self.pressKey)
         
         # 1. Menu
         self.actionOpenFolder.triggered.connect(self.actionOpenFolderFunction)
         self.actionAddNewImages.triggered.connect(self.addNewImages)
         self.actionNewProject.triggered.connect(self.createNewProjectDialog)
         self.actionOpenProject.triggered.connect(self.openExistingProject)
-        # self.actionCreate_a_Project.triggered.connect(self.openCreateProjectDialog)
 
         # 2. Zoom in and out
         self.ControlKey = False
@@ -148,8 +157,6 @@ class MainWindow(QMainWindow, form_class_main,
         self.scaled_icon = self.icon.scaled(QSize(5, 5), Qt.KeepAspectRatio)
         self.custom_cursor = QCursor(self.scaled_icon)
 
-        # 9. Layer View Mode 
-        self.layerViewCheckBox.stateChanged.connect(self.layerViewMode)
 
 
             
@@ -157,6 +164,8 @@ class MainWindow(QMainWindow, form_class_main,
     #### Methods ##### 
     
     def storeXY(self, event):
+        """I don't know What this is for FIXME
+        """
         if self.ControlKey:
             self.img_v_x = event.pos().x()
             self.img_v_y = event.pos().y()
@@ -168,8 +177,13 @@ class MainWindow(QMainWindow, form_class_main,
 
 
     def addNewImages(self):
+        """Add images to working directory 
+            FIXME: This function is so slow now... need to improve import speed. 
+        Args : 
+
+        """
         
-        try :
+        try : # FIXME: Remove this try, except if possible  
 
             if self.openFolderPath :
                 self.imgPath = self.openFolderPath
@@ -255,11 +269,23 @@ class MainWindow(QMainWindow, form_class_main,
 
 
     def layerViewMode(self):
+        """
+            FIXME: What this is for?? 
+        """
         pass
 
     def updateLayers(self, x, y):
+        """Update layers 
+            
+            self.layers
+            self.label_class 
+            x, y (int): coordinates to convert label 
+        """
+        attrs = ['layers', 'label_class']
+        for attr in attrs: 
+            assert hasattr(self, attr)
         
-        try : 
+        try : # FIXME: Why do we need this try, exception 
             # print(f"label_class {self.label_class}")
             if self.use_brush :
                 self.layers[self.label_class][y, x] = 1
@@ -272,17 +298,25 @@ class MainWindow(QMainWindow, form_class_main,
         
 
     def updateLabelFromLayers(self, x, y):
+        """Update label from each label 
+
+            Args 
+                self.label
+                self.layers 
+                x, y (int): coordinates to convert label
+        
+        """
+        attrs = ['label', 'layers']
+        for attr in attrs: 
+            assert hasattr(self, attr)
+
         self.label[y, x] = 0
         temp_label = self.label[y, x]
-        # print(f"bf : {temp_label}")
-        for idx in reversed(range(1, len(self.layers))):
-            
-            # print(f"layer!! {self.layers[idx][y, x]} ")
-             
+
+        for idx in reversed(range(1, len(self.layers))):             
             temp_label = np.where(self.layers[idx][y, x], idx, temp_label)
-            # print(f"af : {temp_label}") 
+
         self.label[y, x] = temp_label
-        # print(f"lf {temp_label}")
 
         
     def updateColormapFromLabel(self, x, y):
@@ -675,15 +709,12 @@ class MainWindow(QMainWindow, form_class_main,
     def scrollAreaMousePress(self, event):
 
         self.hand_last_point = QPoint(QCursor.pos().x(), QCursor.pos().y())
-        print(f"scrollAreaMousePress's pos {self.hand_last_point}")
         
     def scrollAreaMouseMove(self, event):
 
 
         delta_y = self.hand_last_point.y() - QCursor.pos().y()
         delta_x = self.hand_last_point.x() -  QCursor.pos().x() 
-
-        print(f"delta_y {delta_y}, delta_x {delta_x}")
 
         setvalueY = self.scrollArea.verticalScrollBar().value()
         setvalueX = self.scrollArea.horizontalScrollBar().value()
